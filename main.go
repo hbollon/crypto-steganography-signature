@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"image"
 	"image/draw"
@@ -28,14 +26,11 @@ func main() {
 	fmt.Println(string(decodedMdg))
 
 	logrus.Info("Sign file with random key")
-	// Generate RSA key
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	priv, pub, err := InitializeKeyPair(4096)
 	if err != nil {
 		panic(err)
 	}
-	// Instanciate our Signer and Unsigner with our keypair
-	priv, _ := newSignerFromKey(key)
-	pub, _ := newUnsignerFromKey(key.Public())
+
 	// Sign message
 	msg := []byte("Hello, world!")
 	signature, err := priv.Sign(msg)
@@ -43,13 +38,22 @@ func main() {
 		panic(err)
 	}
 	logrus.Info("Signed signature: ", signature)
+
 	// Verify signature
-	err = pub.Unsign(msg, signature)
+	err = pub.Verify(msg, signature)
 	if err != nil {
 		logrus.Warn("Unverified signature")
 		panic(err)
 	}
 	logrus.Info("Verified signature")
+
+	// Verify signature with wrong one
+	err = pub.Verify(msg, []byte("wrong signature"))
+	if err == nil {
+		logrus.Warn("Verified signature")
+		panic(nil)
+	}
+	logrus.Info("Unverified signature")
 
 }
 

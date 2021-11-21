@@ -8,18 +8,43 @@ import (
 	"fmt"
 )
 
-// A Signer is can create signatures that verify against a public key.
+// Signer can create signatures that verify against a public key.
 type Signer interface {
 	// Sign returns raw signature for the given data. This method
 	// will apply the hash specified for the keytype to the data.
 	Sign(data []byte) ([]byte, error)
 }
 
-// A Signer is can create signatures that verify against a public key.
+// Unsigner can verify signatures made with Signer.
 type Unsigner interface {
-	// Sign returns raw signature for the given data. This method
-	// will apply the hash specified for the keytype to the data.
-	Unsign(message []byte, sig []byte) error
+	// Verify verifies signature validity with existing data. This method
+	// will apply the existing signature specified to the data.
+	Verify(message []byte, sig []byte) error
+}
+
+// InitializeKeyPair generates a new RSA keypair of the given bit size using the random source random.
+// It returns an Signer and an Unsigner.
+// It also returns an error if the key pair, the Signer or the Unsigner could not be generated.
+func InitializeKeyPair(bitsSize int) (signer Signer, unsigner Unsigner, err error) {
+	// Generate keypair
+	privateKey, err := rsa.GenerateKey(rand.Reader, bitsSize)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create signer
+	signer, err = newSignerFromKey(privateKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create unsigner
+	unsigner, err = newUnsignerFromKey(privateKey.Public())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return
 }
 
 func newSignerFromKey(k interface{}) (Signer, error) {
@@ -60,10 +85,7 @@ func (r *rsaPrivateKey) Sign(data []byte) ([]byte, error) {
 	return rsa.SignPKCS1v15(rand.Reader, r.PrivateKey, crypto.SHA256, d)
 }
 
-// Unsign encrypts data with rsa-sha256
-func (r *rsaPublicKey) Unsign(message []byte, sig []byte) error {
-	h := sha256.New()
-	h.Write(message)
-	d := h.Sum(nil)
-	return rsa.VerifyPKCS1v15(r.PublicKey, crypto.SHA256, d, sig)
+// Verify verifies signature validity with existing data
+func (r *rsaPublicKey) Verify(message []byte, sig []byte) error {
+	return rsa.VerifyPKCS1v15(r.PublicKey, crypto.SHA256, message, sig)
 }
