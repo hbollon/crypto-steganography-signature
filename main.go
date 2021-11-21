@@ -1,11 +1,15 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -13,6 +17,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	logrus.Info("LSB Steganography")
 	imgWithMsg := EncodeLSBSteganography(imageToNRGBA(img), []byte(os.Args[2]))
 	err = saveToImg("test.png", imgWithMsg)
 	if err != nil {
@@ -20,6 +26,31 @@ func main() {
 	}
 	decodedMdg := DecodeLSBSteganography(&imgWithMsg, len([]byte(os.Args[2]))*8)
 	fmt.Println(string(decodedMdg))
+
+	logrus.Info("Sign file with random key")
+	// Generate RSA key
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		panic(err)
+	}
+	// Instanciate our Signer and Unsigner with our keypair
+	priv, _ := newSignerFromKey(key)
+	pub, _ := newUnsignerFromKey(key.Public())
+	// Sign message
+	msg := []byte("Hello, world!")
+	signature, err := priv.Sign(msg)
+	if err != nil {
+		panic(err)
+	}
+	logrus.Info("Signed signature: ", signature)
+	// Verify signature
+	err = pub.Unsign(msg, signature)
+	if err != nil {
+		logrus.Warn("Unverified signature")
+		panic(err)
+	}
+	logrus.Info("Verified signature")
+
 }
 
 func openImage(path string) (image.Image, error) {
