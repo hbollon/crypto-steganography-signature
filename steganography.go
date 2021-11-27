@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"strconv"
 )
 
 func EncodeLSBSteganography(img *image.NRGBA, msg []byte) image.NRGBA {
@@ -31,20 +32,64 @@ func EncodeLSBSteganography(img *image.NRGBA, msg []byte) image.NRGBA {
 	return *output
 }
 
+// func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
+// 	bounds := img.Bounds()
+// 	width := bounds.Max.X
+// 	height := bounds.Max.Y
+// 	msgSize := nbBits
+// 	var msg []byte
+// 	var bitIdx int
+// 	for i := 0; i < height; i++ {
+// 		for j := 0; j < width; j++ {
+// 			pix := img.NRGBAAt(j, i)
+// 			bit := getLSB(pix.R)
+// 			msg = append(msg, bit)
+// 			bitIdx++
+// 			if bitIdx == msgSize {
+// 				return msg
+// 			}
+// 		}
+// 	}
+// 	return msg
+// }
+
 func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
 	bounds := img.Bounds()
 	width := bounds.Max.X
 	height := bounds.Max.Y
 	msgSize := nbBits
-	var msg []byte
+	lenBytes := nbBits/8 + 1
+	msg := make([]byte, lenBytes)
 	var bitIdx int
+	var bitBuffer string
+	var bitBufSize int
+	var idx int
 	for i := 0; i < height; i++ {
 		for j := 0; j < width; j++ {
 			pix := img.NRGBAAt(j, i)
 			bit := getLSB(pix.R)
-			msg = append(msg, bit)
 			bitIdx++
+			if bitBufSize == 8 {
+				tmp, err := strconv.ParseInt(bitBuffer, 2, 64)
+				if err != nil {
+					panic(err)
+				}
+				msg[idx] = byte(tmp)
+				idx++
+				bitBuffer, bitBufSize = "", 0
+			}
+			bitBuffer = bitBuffer + strconv.Itoa(int(bit))
+			bitBufSize++
 			if bitIdx == msgSize {
+				if bitBufSize != 0 {
+					for i := 0; i < 8-bitBufSize; i++ {
+						bitBuffer = bitBuffer + strconv.Itoa(0)
+					}
+					tmp, _ := strconv.ParseInt(bitBuffer, 2, 64)
+					msg[idx] = byte(tmp)
+					idx++
+				}
+				msg = msg[:idx]
 				return msg
 			}
 		}

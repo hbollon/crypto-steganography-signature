@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"image"
 	"image/color"
@@ -22,9 +23,21 @@ type Img struct {
 }
 
 // GenerateCustomDiplome generates a custom diplome to generated_diplome.png
-func GenerateCustomDiplome(nom, moyenne, photo string) {
+func GenerateCustomDiplome(nom, moyenne, photo string, keySize int) {
+	// Generate kaypair and sign name
+	signer, _, err := InitializeKeyPair(keySize, true)
+	if err != nil {
+		panic(err)
+	}
+	signedName, err := signer.Sign([]byte(nom))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(hex.EncodeToString(signedName))
+
 	// Add diplome's custom text
 	img := LoadImage("template.png")
+	img.AddCenteredText(hex.EncodeToString(signedName), 8.0, color.RGBA{255, 65, 65, 255}, 20)
 	img.AddCenteredText("Diplôme", 62.0, color.RGBA{255, 65, 65, 255}, 150)
 	img.AddCenteredText("Master Informatique", 42.0, color.RGBA{255, 65, 65, 255}, 240)
 	img.AddCenteredText(fmt.Sprintf("Désservi à %s", nom), 24.0, color.RGBA{255, 65, 65, 255}, 320)
@@ -34,36 +47,35 @@ func GenerateCustomDiplome(nom, moyenne, photo string) {
 	// Hide photo using LSB
 	diplome, err := openImage("generated_diplome.png")
 	if err != nil {
-		logrus.Fatal(err)
+		panic(err)
+	}
+	f, err := ioutil.ReadFile(photo)
+	if err != nil {
+		panic(err)
+	}
+	logrus.Info(len(f))
+	logrus.Info(f[len(f)-10:])
+	diplomeNRGBA := EncodeLSBSteganography(imageToNRGBA(diplome), f)
+	err = saveToImg("generated_diplome.png", diplomeNRGBA)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ExtractLSBFromDiplome(photo string) {
+	img, err := openImage("generated_diplome.png")
+	if err != nil {
+		panic(err)
 	}
 	f, err := ioutil.ReadFile(photo)
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	diplomeNRGBA := EncodeLSBSteganography(imageToNRGBA(diplome), f)
-	err = saveToImg("generated_diplome.png", diplomeNRGBA)
-	if err != nil {
-		logrus.Fatal(err)
-	}
+	data := DecodeLSBSteganography(imageToNRGBA(img), len(f)*8)
 
-	// Add signature
-	f, err = ioutil.ReadFile(photo)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	signer, _, err := InitializeKeyPair(4096, true)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	_, err = signer.Sign(f)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	err = saveToImg("generated_diplome.png", diplomeNRGBA)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
+	logrus.Info(len(data))
+	logrus.Info(data[len(data)-10:])
+	err = ioutil.WriteFile("extracted_lsb.png", data, 0644)
 }
 
 // LoadImage loads an image from a file and return a Img instance
