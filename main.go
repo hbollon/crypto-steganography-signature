@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/png"
 	"os"
@@ -66,6 +67,17 @@ func main() {
 		panic(nil)
 	}
 	logrus.Info("Unverified signature")
+
+	// Generate diplome
+	// Load template
+	logrus.Info("Load template")
+	template := LoadImage("template.png")
+
+	// Add coucou text
+	logrus.Info("Add coucou text")
+	template.AddCenteredText("coucou", 24.0, color.RGBA{0, 0, 0, 255}, template.Bounds().Dy()/2)
+	logrus.Info("Save coucou text")
+	template.Save("test_template.png")
 }
 
 func openImage(path string) (image.Image, error) {
