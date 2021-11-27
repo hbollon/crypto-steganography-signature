@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -18,6 +19,51 @@ import (
 // Which allow us to keep original image.NRGBA methods and add new ones
 type Img struct {
 	*image.NRGBA
+}
+
+// GenerateCustomDiplome generates a custom diplome to generated_diplome.png
+func GenerateCustomDiplome(nom, moyenne, photo string) {
+	// Add diplome's custom text
+	img := LoadImage("template.png")
+	img.AddCenteredText("Diplôme", 62.0, color.RGBA{255, 65, 65, 255}, 150)
+	img.AddCenteredText("Master Informatique", 42.0, color.RGBA{255, 65, 65, 255}, 240)
+	img.AddCenteredText(fmt.Sprintf("Désservi à %s", nom), 24.0, color.RGBA{255, 65, 65, 255}, 320)
+	img.AddCenteredText(fmt.Sprintf("Avec une moyenne de %s", moyenne), 18.0, color.RGBA{255, 65, 65, 255}, 400)
+	img.Save("generated_diplome.png")
+
+	// Hide photo using LSB
+	diplome, err := openImage("generated_diplome.png")
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	f, err := ioutil.ReadFile(photo)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	diplomeNRGBA := EncodeLSBSteganography(imageToNRGBA(diplome), f)
+	err = saveToImg("generated_diplome.png", diplomeNRGBA)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	// Add signature
+	f, err = ioutil.ReadFile(photo)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	signer, _, err := InitializeKeyPair(4096, true)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	_, err = signer.Sign(f)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = saveToImg("generated_diplome.png", diplomeNRGBA)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
 }
 
 // LoadImage loads an image from a file and return a Img instance
