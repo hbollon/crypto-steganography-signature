@@ -26,9 +26,21 @@ func main() {
 	fmt.Println(string(decodedMdg))
 
 	logrus.Info("Sign file with random key")
-	priv, pub, err := InitializeKeyPair(4096)
-	if err != nil {
-		panic(err)
+	var priv Signer
+	var pub Unsigner
+
+	if len(os.Args) <= 3 {
+		logrus.Info("Generate key")
+		priv, pub, err = InitializeKeyPair(4096, true)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		logrus.Info("Load key")
+		priv, pub, err = InitializeKeyPairFromFiles(os.Args[3], os.Args[4])
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Sign message
@@ -54,7 +66,6 @@ func main() {
 		panic(nil)
 	}
 	logrus.Info("Unverified signature")
-
 }
 
 func openImage(path string) (image.Image, error) {
