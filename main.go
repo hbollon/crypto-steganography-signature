@@ -16,6 +16,7 @@ func displayHelp() {
 	fmt.Println("Commands:")
 	fmt.Println("\tgenerate-custom-diplome <NAME> <GRADE> <IMG_TO_HIDE_PATH> <KEYPAIR_BIT_SIZE>")
 	fmt.Println("\textract-lsb-from-diplome <HID_IMG_PATH>")
+	fmt.Println("\tverify-signature <ORIGINAL_MESSAGE> <ENCODED_DATA>")
 }
 
 func main() {
@@ -42,6 +43,21 @@ func main() {
 			return
 		}
 		ExtractLSBFromDiplome(os.Args[2])
+		logrus.Info("Hidden data successfully extracted! Saved to extracted_lsb.png")
+	case "verify-signature":
+		if len(os.Args) != 4 {
+			displayHelp()
+			return
+		}
+		_, unsigner, err := InitializeKeyPairFromFiles("private.pem", "public.pem")
+		if err != nil {
+			panic(err)
+		}
+		err = unsigner.Verify([]byte(os.Args[2]), []byte(os.Args[3]))
+		if err != nil {
+			logrus.Error("Signature verification failed!")
+			return
+		}
 		logrus.Info("Hidden data successfully extracted! Saved to extracted_lsb.png")
 	default:
 		displayHelp()

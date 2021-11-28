@@ -5,6 +5,8 @@ import (
 	"strconv"
 )
 
+// EncodeLSBSteganography encodes a message in an image using LSB steganography method
+// Returns the image with the message hidden
 func EncodeLSBSteganography(img *image.NRGBA, msg []byte) image.NRGBA {
 	bounds := img.Bounds()
 	width := bounds.Max.X
@@ -32,33 +34,15 @@ func EncodeLSBSteganography(img *image.NRGBA, msg []byte) image.NRGBA {
 	return *output
 }
 
-// func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
-// 	bounds := img.Bounds()
-// 	width := bounds.Max.X
-// 	height := bounds.Max.Y
-// 	msgSize := nbBits
-// 	var msg []byte
-// 	var bitIdx int
-// 	for i := 0; i < height; i++ {
-// 		for j := 0; j < width; j++ {
-// 			pix := img.NRGBAAt(j, i)
-// 			bit := getLSB(pix.R)
-// 			msg = append(msg, bit)
-// 			bitIdx++
-// 			if bitIdx == msgSize {
-// 				return msg
-// 			}
-// 		}
-// 	}
-// 	return msg
-// }
-
+// DecodeLSBSteganography decodes a message hidden in an image using LSB steganography method
+// Returns the message
 func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
 	bounds := img.Bounds()
 	width := bounds.Max.X
 	height := bounds.Max.Y
 	msgSize := nbBits
-	lenBytes := nbBits/8 + 1
+	// Real message size is msgSize/8
+	lenBytes := msgSize/8 + 1
 	msg := make([]byte, lenBytes)
 	var bitIdx int
 	var bitBuffer string
@@ -70,6 +54,8 @@ func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
 			bit := getLSB(pix.R)
 			bitIdx++
 			if bitBufSize == 8 {
+				// ParseInt interprets a string s in the given base (0, 2 to 36)
+				// and bit size (0 to 64) and returns the corresponding value i.
 				tmp, err := strconv.ParseInt(bitBuffer, 2, 64)
 				if err != nil {
 					panic(err)
@@ -89,6 +75,7 @@ func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
 					msg[idx] = byte(tmp)
 					idx++
 				}
+				// Truncate the message to the actual size
 				msg = msg[:idx]
 				return msg
 			}
@@ -97,6 +84,7 @@ func DecodeLSBSteganography(img *image.NRGBA, nbBits int) []byte {
 	return msg
 }
 
+// getBitFromByte returns the bit at the given index in the given byte
 func getBitFromByte(b byte, indexInByte int) byte {
 	b = b << uint(indexInByte)
 	var mask byte = 0x80
@@ -108,6 +96,7 @@ func getBitFromByte(b byte, indexInByte int) byte {
 	return 0
 }
 
+// getLSB returns the LSB of the given byte
 func getLSB(b byte) byte {
 	if b%2 == 0 {
 		return 0
@@ -115,6 +104,7 @@ func getLSB(b byte) byte {
 	return 1
 }
 
+// setLSB sets the LSB of the given byte to the given value
 func setLSB(b *byte, bit byte) {
 	if bit == 1 {
 		*b = *b | 1
