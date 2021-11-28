@@ -12,6 +12,14 @@ import (
 	"os"
 )
 
+type rsaPublicKey struct {
+	*rsa.PublicKey
+}
+
+type rsaPrivateKey struct {
+	*rsa.PrivateKey
+}
+
 // Signer can create signatures that verify against a public key.
 type Signer interface {
 	// Sign returns raw signature for the given data. This method
@@ -24,6 +32,28 @@ type Unsigner interface {
 	// Verify verifies signature validity with existing data. This method
 	// will apply the existing signature specified to the data.
 	Verify(message []byte, sig []byte) error
+}
+
+func newSignerFromKey(k interface{}) (Signer, error) {
+	var sshKey Signer
+	switch t := k.(type) {
+	case *rsa.PrivateKey:
+		sshKey = &rsaPrivateKey{t}
+	default:
+		return nil, fmt.Errorf("ssh: unsupported key type %T", k)
+	}
+	return sshKey, nil
+}
+
+func newUnsignerFromKey(k interface{}) (Unsigner, error) {
+	var sshKey Unsigner
+	switch t := k.(type) {
+	case *rsa.PublicKey:
+		sshKey = &rsaPublicKey{t}
+	default:
+		return nil, fmt.Errorf("ssh: unsupported key type %T", k)
+	}
+	return sshKey, nil
 }
 
 // InitializeKeyPair generates a new RSA keypair of the given bit size using the random source random.
@@ -140,36 +170,6 @@ func exportKeyPairToPem(privateKey *rsa.PrivateKey, publicKey *rsa.PublicKey) er
 	}
 
 	return nil
-}
-
-func newSignerFromKey(k interface{}) (Signer, error) {
-	var sshKey Signer
-	switch t := k.(type) {
-	case *rsa.PrivateKey:
-		sshKey = &rsaPrivateKey{t}
-	default:
-		return nil, fmt.Errorf("ssh: unsupported key type %T", k)
-	}
-	return sshKey, nil
-}
-
-func newUnsignerFromKey(k interface{}) (Unsigner, error) {
-	var sshKey Unsigner
-	switch t := k.(type) {
-	case *rsa.PublicKey:
-		sshKey = &rsaPublicKey{t}
-	default:
-		return nil, fmt.Errorf("ssh: unsupported key type %T", k)
-	}
-	return sshKey, nil
-}
-
-type rsaPublicKey struct {
-	*rsa.PublicKey
-}
-
-type rsaPrivateKey struct {
-	*rsa.PrivateKey
 }
 
 // Sign signs data with rsa-sha256
